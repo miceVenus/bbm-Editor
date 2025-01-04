@@ -17,6 +17,19 @@
 
 /*** data ***/
 
+enum editorKey{
+    ARROW_LEFT = 777,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN,
+    PAGE_UP,
+    PAGE_DOWN,
+    HOME,
+    END,
+    DELETE
+
+};
+
 struct editorConfig E; //尚未被赋值的全局变量会被初始化为0
 
 /*** data ***/
@@ -64,8 +77,8 @@ void EnableRawMode(){
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
-    // raw.c_cc[VMIN] = 0;
-    // raw.c_cc[VTIME] = 5;
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
 
     CheckedTcSetAttr(STDIN_FILENO, TCSAFLUSH, &raw);
     
@@ -105,44 +118,109 @@ int GetCursorPosition(int *row, int *col){
 
 /*** input ***/
 
-char ReadKeypress(){
-    char c = '\0';
-    CheckedRead(STDIN_FILENO, &c, 1);
-    return c;
+/* 有一点bug 快速按esc + [ + ctrl + c 会导致cursor移动*/
+
+int ReadKeypress(){
+
+    char key = '\0';
+    CheckedRead(STDIN_FILENO, &key, 1);
+    if(key == '\x1b'){
+        char seq[3];
+        if(read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+        if(read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+
+        if(seq[1] <= '9' && seq[1] >= '0'){
+            if(read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+            if(seq[2] == '~'){
+                switch(seq[1]){
+                    case '5': return PAGE_UP;
+                    case '6': return PAGE_DOWN;
+                    case '3': return DELETE;
+                }
+            }
+        }
+        // if(JudgePageUp(seq)) return PAGE_UP;
+        // if(JudgePageDown(seq)) return PAGE_DOWN;
+
+        if(seq[0] == '[')
+            switch(seq[1]){
+                case 'A': return ARROW_UP;
+                case 'B': return ARROW_DOWN;
+                case 'C': return ARROW_RIGHT;
+                case 'D': return ARROW_LEFT;
+                case 'H': return HOME;
+                case 'F': return END;
+            }
+        return key;
+    }else{
+        return key;
+    }
 }
 
 void ProcessKeypress(){
-    char c = ReadKeypress();
-
-    switch(c){
+    int key = ReadKeypress();
+    switch(key){
         case CTRL_KEY('q'):
             FlushTerminalAndSetCursorToLT();
             exit(0);
             break;
-        case 'w':
-        case 's':
-        case 'a':
-        case 'd':
-            MoveCursor(c);
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_LEFT:
+        case ARROW_RIGHT:
+            MoveCursor(key);
             break;
+        case PAGE_UP:
+        case PAGE_DOWN:{
+            int times = E.WindowsRow;
+            while(times--)
+                MoveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+        }
+            break;
+        
+        case HOME:{
+            E.xcursPosition = 0;
+            break;
+        }
+        case END:{
+            E.xcursPosition = E.WindowsCol - 1;
+            break;
+        }
+        case DELETE:{
+            MoveCursor(DELETE);
+            break;
+        }
     }
 }
 
-void MoveCursor(char c){
-    switch(c){
-        case 'w':
-            E.ycursPosition--;
-            break;
-        case 's':
-            E.ycursPosition++;
-            break;
-        case 'a':
-            E.xcursPosition--;
-            break;
-        case 'd':
-            E.xcursPosition++;
-            break;
-    }
+void MoveCursor(int key){
+  switch (key) {
+    case ARROW_LEFT:
+      if (E.xcursPosition != 0) {
+        E.xcursPosition--;
+      }
+      break;
+    case ARROW_RIGHT:
+      if (E.xcursPosition != E.WindowsCol - 1) {
+        E.xcursPosition++;
+      }
+      break;
+    case ARROW_UP:
+      if (E.ycursPosition != 0) {
+        E.ycursPosition--;
+      }
+      break;
+    case ARROW_DOWN:
+      if (E.ycursPosition != E.WindowsRow - 1) {
+        E.ycursPosition++;
+      }
+      break;
+    case DELETE:
+      if (E.xcursPosition != 0) {
+        E.xcursPosition--;
+      }
+      break;
+  }
 }
 /*** output ***/
 

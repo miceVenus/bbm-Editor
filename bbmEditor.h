@@ -25,7 +25,7 @@ void DisabelRawMode();
 void EnableRawMode();
 int GetWindowRowCol(int *row, int *col);
 int GetCursorPosition(int *row, int *col);
-char ReadKeypress();
+int ReadKeypress();
 void ProcessKeypress();
 void DrawRows();
 void RefreshScreen();
@@ -33,7 +33,7 @@ void FlushTerminalAndSetCursorToLT();
 void ABufferAppend(struct appendBuffer *ab, const char *s, int len);
 void ABufferFree(struct appendBuffer *ab);
 void InitEditor();
-void MoveCursor(char c);
+void MoveCursor(int c);
 
 
 #endif // KILO_H

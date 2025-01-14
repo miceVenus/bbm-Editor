@@ -1,10 +1,15 @@
 /*** includes ***/
 
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include<unistd.h>
 #include<errno.h>
 #include<stdlib.h>
 #include<stdio.h>
 #include<sys/ioctl.h>
+#include<sys/types.h>
 #include<ctype.h>
 #include "bbmEditor.h"
 #include<string.h>
@@ -194,63 +199,102 @@ void ProcessKeypress(){
 }
 
 void MoveCursor(int key){
-  switch (key) {
-    case ARROW_LEFT:
-      if (E.xcursPosition != 0) {
-        E.xcursPosition--;
-      }
-      break;
-    case ARROW_RIGHT:
-      if (E.xcursPosition != E.WindowsCol - 1) {
-        E.xcursPosition++;
-      }
-      break;
-    case ARROW_UP:
-      if (E.ycursPosition != 0) {
-        E.ycursPosition--;
-      }
-      break;
-    case ARROW_DOWN:
-      if (E.ycursPosition != E.WindowsRow - 1) {
-        E.ycursPosition++;
-      }
-      break;
-    case DELETE:
-      if (E.xcursPosition != 0) {
-        E.xcursPosition--;
-      }
-      break;
-  }
+    // editorRow *row = (E.ycursPosition >= E.numrows) ? NULL : &E.row[E.ycursPosition];
+    switch (key) {
+        case ARROW_LEFT:
+            if (E.xcursPosition != 0) {
+            E.xcursPosition--;
+            } else if(E.ycursPosition > 0){
+                E.ycursPosition--;
+                E.xcursPosition = E.row[E.ycursPosition].size;
+            }
+            break;
+        case ARROW_RIGHT:
+            if (E.xcursPosition < E.row[E.ycursPosition].size) {
+            E.xcursPosition++;
+            } else if(E.ycursPosition < E.numrows){
+                E.ycursPosition++;
+                E.xcursPosition = 0;
+            }
+            break;
+        case ARROW_UP:
+            if (E.ycursPosition != 0) {
+            E.ycursPosition--;
+            }
+            E.xcursPosition = E.row[E.ycursPosition].size;
+            break;
+        case ARROW_DOWN:
+            if (E.ycursPosition < E.numrows) {
+            E.ycursPosition++;
+            }
+            E.xcursPosition = E.row[E.ycursPosition].size;
+            break;
+        case DELETE:
+            if (E.xcursPosition != 0) {
+            E.xcursPosition--;
+            }
+            break;
+    }
+    // if(row != NULL && E.xcursPosition > row->size){
+    //     E.xcursPosition = row->size;
+    // }
 }
 /*** output ***/
 
+void PrintWelcome(struct appendBuffer *ab){
+    char welCome[80];
+    char cup[10];
+
+    int welComeLen = snprintf(welCome, sizeof(welCome), "Welcome to Kilo editor -- version %s -- by miceVenus",KILO_VERSION);
+    if(welComeLen > E.WindowsCol) welComeLen = E.WindowsCol;
+
+    int cupLen = snprintf(cup, sizeof(cup), "\x1b[%d;%dH", E.WindowsRow, E.WindowsCol - welComeLen + 1);
+
+    ABufferAppend(ab, cup, cupLen);
+    ABufferAppend(ab, welCome, welComeLen);
+}
+
 void DrawRows(struct appendBuffer *ab){
     for(int i = 0; i < E.WindowsRow; i++){
+        int fileRow = i + E.rowoff;
+        
+        if(i == E.WindowsRow - 1 && E.numrows == 0) PrintWelcome(ab);
 
-        if(i<E.WindowsRow-1) {
-            ABufferAppend(ab, "\x1b[K", 3);
-            ABufferAppend(ab, "~", 1);
-            ABufferAppend(ab, "\r\n", 2);
+        if(fileRow >= E.numrows){
+            if(E.numrows == 0 && i < E.WindowsRow - 1) ABufferAppend(ab, "~", 1);
+            else
+            if(i < E.WindowsRow && E.numrows != 0) ABufferAppend(ab, "~", 1);
+        }else{
+            int len = E.row[fileRow].size - E.coloff;
+            if(len < 0) len = 0;
+            if(len > E.WindowsCol) len = E.WindowsCol;
+            ABufferAppend(ab, &E.row[fileRow].chars[E.coloff], len);
         }
 
-        if(i == E.WindowsRow - 1){
-            char welCome[80];
-            char cup[10];
-
-            int welComeLen = snprintf(welCome, sizeof(welCome), "Welcome to Kilo editor -- version %s -- by miceVenus",KILO_VERSION);
-            // printf("%d", welComeLen); 在启动原始模式后就不能用printf打印了 
-            if(welComeLen > E.WindowsCol) welComeLen = E.WindowsCol;
-
-            int cupLen = snprintf(cup, sizeof(cup), "\x1b[%d;%dH", E.WindowsRow, E.WindowsCol - welComeLen + 1);
-
-            ABufferAppend(ab, cup, cupLen);
-            ABufferAppend(ab, welCome, welComeLen);
+        if(i < E.WindowsRow - 1){
+            ABufferAppend(ab, "\x1b[K", 3);
+            ABufferAppend(ab, "\r\n", 2);
         }
     }
 }
 
+void editorScroll(){
+    if(E.ycursPosition < E.rowoff){
+        E.rowoff = E.ycursPosition;
+    }
+    if(E.ycursPosition >= E.rowoff + E.WindowsRow){
+        E.rowoff = E.ycursPosition - E.WindowsRow + 1;
+    }
+    if(E.xcursPosition < E.coloff){
+        E.coloff = E.xcursPosition;
+    }
+    if(E.xcursPosition >= E.WindowsCol + E.coloff){
+        E.coloff = E.xcursPosition - E.WindowsCol + 1;
+    }
+}
 void RefreshScreen(){
     struct appendBuffer ab = ABUF_INIT;
+    editorScroll();
 
     ABufferAppend(&ab, "\x1b[?25l", 6);
     ABufferAppend(&ab, "\x1b[H", 3);
@@ -258,13 +302,43 @@ void RefreshScreen(){
     DrawRows(&ab);
 
     char buf[32];
-    int bufLen = snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.ycursPosition + 1, E.xcursPosition + 1);
+    int bufLen = snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.ycursPosition - E.rowoff + 1, E.xcursPosition - E.coloff + 1);
     ABufferAppend(&ab, buf, bufLen);
     ABufferAppend(&ab, "\x1b[?25h", 6);
+    ABufferAppend(&ab, "\x1b[0K", 4);
     write(STDOUT_FILENO, ab.buffer, ab.len);
 
     ABufferFree(&ab);
 }
+/*** file IO ***/
+void editorAppendNewLine(char *s, size_t len){
+    E.row = realloc(E.row, sizeof(editorRow) * (E.numrows + 1));
+
+    E.row[E.numrows].size = len;
+    E.row[E.numrows].chars = malloc(len + 1);
+    memcpy(E.row[E.numrows].chars, s, len);
+    E.row[E.numrows].chars[len] = '\0';
+    E.numrows++;
+}
+void editorOpen(char *filename){
+    FILE *fp = fopen(filename, "r");
+    if(!fp) Die("fopen");
+
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen = getline(&line, &linecap, fp);
+
+    while(linelen != -1){
+        while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
+            linelen--;
+        }
+        editorAppendNewLine(line, linelen);
+        linelen = getline(&line, &linecap, fp);
+    }
+    free(line);
+    fclose(fp);
+}
+
 
 /*** appendBuffer ***/
 
@@ -286,18 +360,25 @@ void ABufferFree(struct appendBuffer *ab){
 void InitEditor(){
     E.xcursPosition = 0;
     E.ycursPosition = 0;
+    E.numrows = 0;
+    E.row = NULL;
+    E.rowoff = 0;
+    E.coloff = 0;
     if(GetWindowRowCol(&E.WindowsRow, &E.WindowsCol) == -1)
         Die("GetWindowSize");
 }
 
 
-int main(){
+int main(int argc, char **argv){
     EnableRawMode();
     InitEditor();
+    if(argc == 2){
+        editorOpen(argv[1]);
+    }
 
     while(1){
-        RefreshScreen();
         ProcessKeypress();
+        RefreshScreen();
     }
 
     return 0;

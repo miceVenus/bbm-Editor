@@ -3,12 +3,22 @@
 #include <unistd.h>
 #include <termios.h>
 
+
+typedef struct editorRow{
+    int size;
+    char *chars;
+}editorRow;
+
 struct editorConfig{
     struct termios originTermios;
     int WindowsRow;
     int WindowsCol;
     int xcursPosition;
     int ycursPosition;
+    int numrows;
+    int coloff;
+    int rowoff;
+    editorRow *row;
 };
 
 struct appendBuffer{

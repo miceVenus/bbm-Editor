@@ -20,6 +20,7 @@
 /*** data ***/
 
 enum editorKey{
+    BACKSPACE = 500,
     ARROW_LEFT = 777,
     ARROW_RIGHT,
     ARROW_UP,
@@ -29,7 +30,6 @@ enum editorKey{
     HOME,
     END,
     DELETE
-
 };
 
 struct editorConfig E; //尚未被赋值的全局变量会被初始化为0
@@ -77,12 +77,11 @@ void EnableRawMode(){
 
     raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
-    raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
+    raw.c_oflag &= ~(OPOST);
     //set the minimum number of bytes of input needed before read() can return set 0 to return immediately non-block
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
-
     CheckedTcSetAttr(STDIN_FILENO, TCSAFLUSH, &raw);
     
 }
@@ -124,9 +123,11 @@ int GetCursorPosition(int *row, int *col){
 /* 有一点bug 快速按esc + [ + ctrl + c 会导致cursor移动*/
 
 int ReadKeypress(){
-
+    int nread;
     char key = '\0';
-    CheckedRead(STDIN_FILENO, &key, 1);
+    while((nread = read(STDERR_FILENO, &key, 1)) != 1){
+        if(nread == -1 && errno != EAGAIN) Die("read");
+    }
     if(key == '\x1b'){
         char seq[3];
         if(read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
@@ -163,6 +164,8 @@ int ReadKeypress(){
 void ProcessKeypress(){
     int key = ReadKeypress();
     switch(key){
+        case '\r':
+            break;
         case CTRL_KEY('q'):
             FlushTerminalAndSetCursorToLT();
             exit(0);
@@ -186,7 +189,6 @@ void ProcessKeypress(){
                 MoveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
         }
             break;
-        
         case HOME:{
             E.xcursPosition = 0;
             break;
@@ -195,12 +197,33 @@ void ProcessKeypress(){
             if(E.ycursPosition < E.numrows) E.xcursPosition = E.row[E.ycursPosition].rsize;
             break;
         }
-        case DELETE:{
-            MoveCursor(DELETE);
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+        case DELETE:
             break;
-        }
+
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
+
+        case CTRL_KEY('s'):
+            Save2Disk();
+            break;
+
+        default:
+            EditorInsertChar(key);
+            break;
     }
 }
+
+void EditorInsertChar(int c){
+    if(E.ycursPosition == E.numrows){
+        editorAppendNewLine("", 0);
+    }
+    RowInsertChar(&E.row[E.ycursPosition], E.xcursPosition, c);
+    E.xcursPosition++;
+}
+
 
 void MoveCursor(int key){
     // editorRow *row = (E.ycursPosition >= E.numrows) ? NULL : &E.row[E.ycursPosition];
@@ -254,7 +277,37 @@ void MoveCursor(int key){
     // }
 }
 /*** output ***/
+char *Erow2String(int *buflen){
+    int len = 0;
+    for(int i = 0; i < E.numrows; i++){
+        len += E.row[i].size + 1;
+    }
+    *buflen = len;
+    char *buf = (char*)malloc(sizeof(char) * len);
+    char *p = buf;
+    for(int i = 0; i < E.numrows; i++){
+        memcpy(p, E.row[i].chars, E.row[i].size);
+        p += E.row[i].size;
+        *p = '\n';
+        p++;
+    }
+    return buf;
+}
+void Save2Disk(){
+    int len;
+    char *buf = Erow2String(&len);
+    char *filename = E.filename;
+    if(filename == NULL){
+        filename = "temp.txt";
+    }
 
+    int fd = open(filename, O_RDWR | O_CREAT, 0644);
+
+    ftruncate(fd, len);
+    write(fd, buf, len);
+    close(fd);
+    free(buf);
+}
 void PrintWelcome(struct appendBuffer *ab){
     char welCome[80];
     char cup[10];
@@ -292,6 +345,14 @@ void DrawStatusMessageBar(struct appendBuffer *ab){
     if(msgLen && (time(NULL) - E.statusmsg_time < 5)){
         ABufferAppend(ab, E.statusmsg, msgLen);
     }
+}
+void RowInsertChar(editorRow *row, int pos, int c){
+    if(pos < 0 || pos > row->size) pos = row->size;
+    row->chars = realloc(row->chars, row->size + 2);
+    row->size++;
+    memmove(&row->chars[pos + 1], &row->chars[pos], row->size - pos);
+    row->chars[pos] = c;
+    eidtorUpdateRow(row);
 }
 
 void DrawRows(struct appendBuffer *ab){
@@ -370,6 +431,9 @@ void RefreshScreen(){
 
     ABufferFree(&ab);
 }
+/*** editor operations ***/
+
+
 /*** file IO ***/
 void editorAppendNewLine(char *s, size_t len){
     E.row = realloc(E.row, sizeof(editorRow) * (E.numrows + 1));
@@ -464,13 +528,13 @@ void InitEditor(){
 int main(int argc, char **argv){
     EnableRawMode();
     InitEditor();
-    if(argc == 2){
+    if(argc >= 2){
         editorOpen(argv[1]);
     }
     editorSetStatusMessage("HELP: Ctrl-Q = quit");
     while(1){
-        ProcessKeypress();
         RefreshScreen();
+        ProcessKeypress();
     }
 
     return 0;

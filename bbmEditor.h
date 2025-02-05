@@ -9,6 +9,7 @@
 #include <termios.h>
 #include <time.h>
 #include <stdarg.h>
+#include <fcntl.h>
 
 typedef struct editorRow{
     int size;
@@ -58,6 +59,10 @@ void InitEditor();
 void MoveCursor(int c);
 void eidtorUpdateRow(editorRow *row);
 int xcursToRxcurs(editorRow *row, int xcurs);
-
+void RowInsertChar(editorRow *row, int at, int c);
+void EditorInsertChar(int c);  
+void editorAppendNewLine(char *s, size_t len);
+void Save2Disk();
+char *Erow2String(int *buflen);
 
 #endif // KILO_H

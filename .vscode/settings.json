@@ -14,6 +14,11 @@
         "string.h": "c",
         "unistd.h": "c",
         "termios.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "main.h": "c",
+        "errno.h": "c",
+        "cstdlib": "c",
+        "appendbuffer.h": "c",
+        "stdarg.h": "c"
     }
 }

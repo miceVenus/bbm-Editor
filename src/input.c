@@ -90,7 +90,7 @@ void ProcessKeypress(){
             break;
 
         case CTRL_KEY('s'):
-            Save2Disk();
+            fileSave();
             break;
 
         default:

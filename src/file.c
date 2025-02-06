@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
 
 
@@ -29,7 +30,7 @@ char *Erow2String(int *buflen){
     }
     return buf;
 }
-void Save2Disk(){
+void fileSave(){
     int len;
     char *buf = Erow2String(&len);
     char *filename = E.filename;
@@ -38,29 +39,41 @@ void Save2Disk(){
     }
 
     FILE *fp = fopen(filename, "w");
-    if(!fp) Die("fopen");
-    fwrite(buf, sizeof(char), len, fp);
-    fclose(fp);
-    free(buf);
+    if(!fp) {
+        editorSetStatusMessage("File error : %s when saving",strerror(errno));
+        return;
+    }else{
+        int writeLen = fwrite(buf, sizeof(char), len, fp);
+        if(writeLen != len){
+            editorSetStatusMessage("File error : %s when writing",strerror(errno));
+            fclose(fp);
+            return;
+        }
+        editorSetStatusMessage("%d Bytes has been saved",len);
+        fclose(fp);
+        free(buf);
+    }
 }
 
-void editorOpen(char *filename){
+void fileOpen(char *filename){
     free(E.filename);
     E.filename = strdup(filename);
     FILE *fp = fopen(filename, "r");
-    if(!fp) Die("fopen");
+    if(!fp) {
+        Die("fopen");
+    }else{
+        char *line = NULL;
+        size_t linecap = 0;
+        ssize_t linelen = getline(&line, &linecap, fp);
 
-    char *line = NULL;
-    size_t linecap = 0;
-    ssize_t linelen = getline(&line, &linecap, fp);
-
-    while(linelen != -1){
-        while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
-            linelen--;
+        while(linelen != -1){
+            while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
+                linelen--;
+            }
+            editorAppendNewLine(line, linelen);
+            linelen = getline(&line, &linecap, fp);
         }
-        editorAppendNewLine(line, linelen);
-        linelen = getline(&line, &linecap, fp);
+        free(line);
+        fclose(fp);
     }
-    free(line);
-    fclose(fp);
 }

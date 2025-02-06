@@ -10,7 +10,7 @@
 #define EDITOR_TAB_STOP 4
 
 enum editorKey{
-    BACKSPACE = 500,
+    BACKSPACE = 127,
     ARROW_LEFT = 777,
     ARROW_RIGHT,
     ARROW_UP,

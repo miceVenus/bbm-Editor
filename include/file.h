@@ -2,6 +2,6 @@
 #define FILE_H
 #endif
 
-void Save2Disk();
-void editorOpen(char *filename);
+void fileSave();
+void fileOpen(char *filename);
 char *Erow2String(int *buflen);

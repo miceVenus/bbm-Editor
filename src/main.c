@@ -9,7 +9,7 @@ int main(int argc, char **argv){
     EnableRawMode();
     InitEditor();
     if(argc >= 2){
-        editorOpen(argv[1]);
+        fileOpen(argv[1]);
     }
     while(1){
         RefreshScreen();

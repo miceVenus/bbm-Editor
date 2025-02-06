@@ -22,8 +22,7 @@ void InitEditor(){
     if(GetWindowRowCol(&E.WindowsRow, &E.WindowsCol) == -1)
         Die("GetWindowSize");
     E.WindowsRow -= 2;
-
-    editorSetStatusMessage("HELP: Ctrl-Q = quit");
+    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save");
 }
 
 void RefreshScreen(){

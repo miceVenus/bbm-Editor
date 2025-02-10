@@ -52,6 +52,7 @@ void fileSave(){
         editorSetStatusMessage("%d Bytes has been saved",len);
         fclose(fp);
         free(buf);
+        E.dirty = 0;
     }
 }
 
@@ -62,6 +63,7 @@ void fileOpen(char *filename){
     if(!fp) {
         Die("fopen");
     }else{
+        E.dirty = 0;
         char *line = NULL;
         size_t linecap = 0;
         ssize_t linelen = getline(&line, &linecap, fp);
@@ -70,7 +72,7 @@ void fileOpen(char *filename){
             while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
                 linelen--;
             }
-            editorAppendNewLine(line, linelen);
+            editorAppendRow(line, linelen);
             linelen = getline(&line, &linecap, fp);
         }
         free(line);

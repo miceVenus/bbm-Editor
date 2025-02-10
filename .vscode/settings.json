@@ -19,6 +19,8 @@
         "errno.h": "c",
         "cstdlib": "c",
         "appendbuffer.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "array": "c",
+        "string_view": "c"
     }
 }

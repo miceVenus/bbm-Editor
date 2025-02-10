@@ -9,6 +9,7 @@
 #include "../include/terminal.h"
 
 void InitEditor(){
+    E.dirty = 0;
     E.xcursPosition = 0;
     E.ycursPosition = 0;
     E.numrows = 0;
@@ -86,20 +87,54 @@ void editorScroll(){
         E.coloff = E.rxcursPosition - E.WindowsCol + 1;
     }
 }
-void editorAppendNewLine(char *s, size_t len){
+void editorAppendRow(char *s, size_t len){
+    editorInsertRow(E.numrows, s, len);
+    // E.row = realloc(E.row, sizeof(editorRow) * (E.numrows + 1));
+
+    // E.row[E.numrows].size = len;
+    // E.row[E.numrows].chars = malloc(len + 1);
+    // memcpy(E.row[E.numrows].chars, s, len);
+    // E.row[E.numrows].chars[len] = '\0';
+
+    // E.row[E.numrows].rsize = 0;
+    // E.row[E.numrows].render = NULL;
+
+    // eidtorUpdateRow(&E.row[E.numrows]);
+
+    // E.numrows++;
+}
+
+void editorFreeLine(editorRow *row){
+    free(row->render);
+    free(row->chars); 
+}
+
+void editorDelRow(int pos){
+    if(pos < 0 || pos >= E.numrows) return;
+    editorFreeLine(&E.row[pos]);
+    memmove(&E.row[pos], &E.row[pos + 1], sizeof(editorRow) * (E.numrows - pos - 1));
+    E.numrows--;
+    E.dirty++;
+}
+
+void editorInsertRow(int pos, char *s, size_t len){
+    if(pos < 0 || pos > E.numrows) return;
+
     E.row = realloc(E.row, sizeof(editorRow) * (E.numrows + 1));
 
-    E.row[E.numrows].size = len;
-    E.row[E.numrows].chars = malloc(len + 1);
-    memcpy(E.row[E.numrows].chars, s, len);
-    E.row[E.numrows].chars[len] = '\0';
+    memmove(&E.row[pos + 1], &E.row[pos], sizeof(editorRow) * (E.numrows - pos));
 
-    E.row[E.numrows].rsize = 0;
-    E.row[E.numrows].render = NULL;
+    editorRow *row = &E.row[pos];
+    row->size = len;
+    row->chars = malloc(len + 1);
+    memcpy(row->chars, s, len);
+    row->chars[len] = '\0';
+    row->rsize = 0;
+    row->render = NULL;
 
-    eidtorUpdateRow(&E.row[E.numrows]);
-
+    eidtorUpdateRow(row);
     E.numrows++;
+    E.dirty++;
 }
 
 void eidtorUpdateRow(editorRow *row){
@@ -121,12 +156,34 @@ void eidtorUpdateRow(editorRow *row){
     row->rsize = rsize;
 }
 
+void EditorInsertString(char *s, int pos, size_t len){
+    if(pos < 0 || pos > E.numrows) return;
+    editorRow *row = &E.row[pos];
+    row->chars = realloc(row->chars, row->size + len + 1);
+    memmove(&row->chars[row->size], s, len);
+    row->size += len;
+    row->chars[row->size] = '\0';
+    eidtorUpdateRow(row);
+    E.dirty++;
+}
 void EditorInsertChar(int c){
     if(E.ycursPosition == E.numrows){
-        editorAppendNewLine("", 0);
+        editorAppendRow("", 0);
     }
     RowInsertChar(&E.row[E.ycursPosition], E.xcursPosition, c);
     E.xcursPosition++;
+}
+void EditorDelChar(){
+    if(E.ycursPosition == E.numrows) return;
+    if(E.xcursPosition > 0){
+        RowDelChar(&E.row[E.ycursPosition], E.xcursPosition - 1);
+        E.xcursPosition--;
+    }else if(E.xcursPosition == 0 && E.ycursPosition > 0){
+        E.xcursPosition = E.row[E.ycursPosition - 1].size;
+        EditorInsertString(E.row[E.ycursPosition].chars, E.ycursPosition - 1 , E.row[E.ycursPosition].size);
+        editorDelRow(E.ycursPosition);
+        E.ycursPosition--;
+    }
 }
 
 void RowInsertChar(editorRow *row, int pos, int c){
@@ -136,16 +193,26 @@ void RowInsertChar(editorRow *row, int pos, int c){
     memmove(&row->chars[pos + 1], &row->chars[pos], row->size - pos);
     row->chars[pos] = c;
     eidtorUpdateRow(row);
+    E.dirty++;
+}
+
+void RowDelChar(editorRow *row, int pos){
+    if(pos < 0 || pos >= row->size) return;
+    memmove(&row->chars[pos], &row->chars[pos + 1], row->size - pos);
+    row->size--;
+    eidtorUpdateRow(row);
+    E.dirty++;
 }
 
 void DrawStatusBar(struct appendBuffer *ab){
     ABufferAppend(ab, "\x1b[7m", 4);
     char status[80];
 
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines - %d current lines",
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines - %d current lines%s",
     E.filename ? E.filename : "[No Name]", 
     E.numrows, 
-    E.ycursPosition);
+    E.ycursPosition,
+    E.dirty ? " (modified)" : "");
 
     if (len > E.WindowsCol) len = E.WindowsCol;
     for(int i = 0; i < E.WindowsCol - len; i++){

@@ -8,6 +8,7 @@
 
 #define BBM_EDITOR_VERSION "0.0.1"
 #define EDITOR_TAB_STOP 4
+#define EIDTOR_CTRLQ_TIME 2
 
 enum editorKey{
     BACKSPACE = 127,
@@ -39,6 +40,7 @@ struct editorConfig{
     int numrows;
     int coloff;
     int rowoff;
+    int dirty;
     editorRow *row;
     char *filename;
     char statusmsg[80];
@@ -50,7 +52,7 @@ struct editorConfig E; //尚未被赋值的全局变量会被初始化为0
 
 void EditorInsertChar(int key);
 void RowInsertChar(editorRow *row, int pos, int c);
-void editorAppendNewLine(char *s, size_t len);
+void editorAppendRow(char *s, size_t len);
 void eidtorUpdateRow(editorRow *row);
 void InitEditor();
 void RefreshScreen();
@@ -60,4 +62,7 @@ void DrawRows(appendBuffer *ab);
 void DrawStatusBar(appendBuffer *ab);
 void DrawStatusMessageBar(appendBuffer *ab);
 void PrintWelcome(appendBuffer *ab);
+void EditorDelChar();
+void RowDelChar(editorRow *row, int pos);
 int xcurs2Rxcurs(editorRow *row, int xcurs);
+void editorInsertRow(int pos, char *s, size_t len);

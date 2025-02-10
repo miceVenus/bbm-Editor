@@ -45,14 +45,20 @@ int ReadKeypress(){
 }
 
 void ProcessKeypress(){
+    static int quitTime = EIDTOR_CTRLQ_TIME;
+
     int key = ReadKeypress();
     switch(key){
         case '\r':
+            HandleEnter();
             break;
         case CTRL_KEY('q'):
-            FlushTerminalAndSetCursorToLT();
-            exit(0);
-            break;
+            if(E.dirty != 0 && quitTime > 0) WaringExitWithoutSave(quitTime--);
+            else{
+                FlushTerminalAndSetCursorToLT();
+                exit(0);
+                break;
+            }
         case ARROW_UP:
         case ARROW_DOWN:
         case ARROW_LEFT:
@@ -82,9 +88,16 @@ void ProcessKeypress(){
         }
         case BACKSPACE:
         case CTRL_KEY('h'):
-        case DELETE:
+            EditorDelChar();
             break;
-
+        case DELETE:
+            if(E.xcursPosition < E.row[E.ycursPosition].size){
+                MoveCursor(ARROW_RIGHT);
+                EditorDelChar();
+                break;
+            }
+            else
+                break;
         case CTRL_KEY('l'):
         case '\x1b':
             break;
@@ -145,5 +158,30 @@ void MoveCursor(int key){
             E.xcursPosition--;
             }
             break;
+    }
+}
+
+void WaringExitWithoutSave(int quitTime){
+    editorSetStatusMessage("Use  CTRL-S To Save Or Repeat CTRL-Q To Exit Times : %d", quitTime);
+}
+
+void HandleEnter(){
+    if(E.xcursPosition == 0){
+        editorInsertRow(E.ycursPosition, "", 0);
+        if (E.ycursPosition < E.numrows) {
+            E.ycursPosition++;
+            E.xcursPosition = 0;
+        }
+    }else{
+        editorInsertRow(E.ycursPosition + 1, &E.row[E.ycursPosition].chars[E.xcursPosition], E.row[E.ycursPosition].size - E.xcursPosition);
+        editorRow *row = &E.row[E.ycursPosition];
+        row->size = E.xcursPosition;
+        row->chars[row->size] = '\0';
+
+        eidtorUpdateRow(row);
+        if (E.ycursPosition < E.numrows) {
+            E.ycursPosition++;
+            E.xcursPosition = 0;
+        }
     }
 }

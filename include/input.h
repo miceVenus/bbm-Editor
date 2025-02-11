@@ -8,3 +8,4 @@ void ProcessKeypress();
 void WaringExitWithoutSave(int quitTime);
 void MoveCursor(int key);
 void HandleEnter();
+int ReadKeypress();

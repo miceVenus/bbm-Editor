@@ -1,3 +1,7 @@
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include<ctype.h>
 #include<stdlib.h>
 #include<stdio.h>
@@ -7,6 +11,8 @@
 
 #include "../include/editor.h"
 #include "../include/terminal.h"
+#include "../include/input.h"
+#include "../include/file.h"
 
 void InitEditor(){
     E.dirty = 0;
@@ -17,6 +23,7 @@ void InitEditor(){
     E.rowoff = 0;
     E.coloff = 0;
     E.filename = NULL;
+    E.fileExtension = NULL;
     E.rxcursPosition = 0;
     E.statusmsg[0] = '\0';
     E.statusmsg_time = 0;
@@ -87,21 +94,38 @@ void editorScroll(){
         E.coloff = E.rxcursPosition - E.WindowsCol + 1;
     }
 }
+char *editorPrompt(char *prompt){
+    size_t bufsize = 128;
+    size_t buflen = 0;
+    char *buf = (char*)malloc(bufsize);
+    buf[buflen] = '\0';
+    while(1){
+        editorSetStatusMessage(prompt, buf);
+        RefreshScreen();
+        int key = ReadKeypress();
+        if(key == '\r'){
+            return buf;
+        }
+        if(!iscntrl(key) && key < 128){
+            if(buflen == bufsize - 1){
+                bufsize *= 2;
+                buf = realloc(buf, bufsize);
+            }
+            buf[buflen++] = key;
+            buf[buflen] = '\0';
+        }else if(key == BACKSPACE){
+            if(buflen != 0) buflen--;
+            buf[buflen] = '\0';
+        }else if(key == CTRL_KEY('q')){
+            free(buf);
+            return NULL;
+        }
+    }
+    return buf;
+}
+
 void editorAppendRow(char *s, size_t len){
     editorInsertRow(E.numrows, s, len);
-    // E.row = realloc(E.row, sizeof(editorRow) * (E.numrows + 1));
-
-    // E.row[E.numrows].size = len;
-    // E.row[E.numrows].chars = malloc(len + 1);
-    // memcpy(E.row[E.numrows].chars, s, len);
-    // E.row[E.numrows].chars[len] = '\0';
-
-    // E.row[E.numrows].rsize = 0;
-    // E.row[E.numrows].render = NULL;
-
-    // eidtorUpdateRow(&E.row[E.numrows]);
-
-    // E.numrows++;
 }
 
 void editorFreeLine(editorRow *row){

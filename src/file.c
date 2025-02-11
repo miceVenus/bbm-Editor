@@ -33,12 +33,16 @@ char *Erow2String(int *buflen){
 void fileSave(){
     int len;
     char *buf = Erow2String(&len);
-    char *filename = E.filename;
+    char promptBuf[80];
+    snprintf(promptBuf, sizeof(promptBuf), "Saved as: %s", E.filename == NULL ? "" : E.filename);
+    char *filename = editorPrompt(strcat(promptBuf, "%s (CTRL-Q to quit)"));
     if(filename == NULL){
-        filename = "temp.txt";
+        editorSetStatusMessage("Save aborted");
+        free(buf);
+        E.dirty = 0;
+        return;
     }
-
-    FILE *fp = fopen(filename, "w");
+    FILE *fp = fopen(strcat(filename, E.fileExtension), "w");
     if(!fp) {
         editorSetStatusMessage("File error : %s when saving",strerror(errno));
         return;
@@ -52,13 +56,15 @@ void fileSave(){
         editorSetStatusMessage("%d Bytes has been saved",len);
         fclose(fp);
         free(buf);
+        free(filename);
         E.dirty = 0;
     }
 }
 
 void fileOpen(char *filename){
     free(E.filename);
-    E.filename = strdup(filename);
+    free(E.fileExtension);
+    InitEditorFileName(filename);
     FILE *fp = fopen(filename, "r");
     if(!fp) {
         Die("fopen");
@@ -77,5 +83,16 @@ void fileOpen(char *filename){
         }
         free(line);
         fclose(fp);
+        E.dirty = 0;
     }
+}
+
+void InitEditorFileName(char *fileName){
+    char *dot = strrchr(fileName, '.');
+    if(!dot || dot == fileName) dot = NULL;
+    E.fileExtension  = strdup(dot == NULL ? ".txt" : dot);
+    size_t fileNameLen = dot - fileName;
+    E.filename = (char*)malloc(fileNameLen + 1);
+    memmove(E.filename, fileName, fileNameLen);
+    E.filename[fileNameLen] = '\0';
 }

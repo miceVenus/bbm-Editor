@@ -6,6 +6,7 @@
 #include "../include/editor.h"
 #include "../include/terminal.h"
 #include "../include/file.h"
+#include "../include/editorFind.h"
 
 int ReadKeypress(){
     int nread;
@@ -104,6 +105,10 @@ void ProcessKeypress(){
 
         case CTRL_KEY('s'):
             fileSave();
+            break;
+        
+        case CTRL_KEY('f'):
+            editorFind();
             break;
 
         default:

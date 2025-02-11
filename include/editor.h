@@ -45,6 +45,7 @@ struct editorConfig{
     char *filename;
     char statusmsg[80];
     time_t statusmsg_time;
+    char *fileExtension;
 };
 
 struct editorConfig E; //尚未被赋值的全局变量会被初始化为0
@@ -66,3 +67,4 @@ void EditorDelChar();
 void RowDelChar(editorRow *row, int pos);
 int xcurs2Rxcurs(editorRow *row, int xcurs);
 void editorInsertRow(int pos, char *s, size_t len);
+char *editorPrompt(char *prompt);

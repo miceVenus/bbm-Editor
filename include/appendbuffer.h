@@ -1,9 +1,9 @@
 #ifndef APPEND_BUFFER_H
 #define APPEND_BUFFER_H
-#endif
 
 #include <stdlib.h>
 
+#endif
 typedef struct appendBuffer{
     char *buffer;
     int len;

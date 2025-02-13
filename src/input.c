@@ -90,6 +90,7 @@ void ProcessKeypress(){
         case BACKSPACE:
         case CTRL_KEY('h'):
             EditorDelChar();
+            editorSetStatusMessage("Delete chars string %s ", E.row[E.ycursPosition].chars);
             break;
         case DELETE:
             if(E.xcursPosition < E.row[E.ycursPosition].size){

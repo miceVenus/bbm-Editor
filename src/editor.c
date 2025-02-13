@@ -2,13 +2,6 @@
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
-#include<ctype.h>
-#include<stdlib.h>
-#include<stdio.h>
-#include<unistd.h>
-#include<string.h>
-#include<stdarg.h>
-
 #include "../include/editor.h"
 #include "../include/terminal.h"
 #include "../include/input.h"
@@ -30,7 +23,7 @@ void InitEditor(){
     if(GetWindowRowCol(&E.WindowsRow, &E.WindowsCol) == -1)
         Die("GetWindowSize");
     E.WindowsRow -= 2;
-    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save");
+    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save | Ctrl-F = find");
 }
 
 void RefreshScreen(){
@@ -94,7 +87,7 @@ void editorScroll(){
         E.coloff = E.rxcursPosition - E.WindowsCol + 1;
     }
 }
-char *editorPrompt(char *prompt){
+char *editorPrompt(char *prompt, void (*callback) (const char *, int)){
     size_t bufsize = 128;
     size_t buflen = 0;
     char *buf = (char*)malloc(bufsize);
@@ -103,7 +96,16 @@ char *editorPrompt(char *prompt){
         editorSetStatusMessage(prompt, buf);
         RefreshScreen();
         int key = ReadKeypress();
-        if(key == '\r'){
+
+        if(key == ARROW_DOWN || key == ARROW_RIGHT){
+            if(callback) callback(buf, key);
+        }
+        if(key == ARROW_UP || key == ARROW_LEFT){
+            if(callback) callback(buf, key);
+        }
+
+        if(key == '\r' || key == '\x1b'){
+            if(callback) callback(buf, key);
             return buf;
         }
         if(!iscntrl(key) && key < 128){
@@ -113,9 +115,13 @@ char *editorPrompt(char *prompt){
             }
             buf[buflen++] = key;
             buf[buflen] = '\0';
-        }else if(key == BACKSPACE){
+            if(callback) callback(buf, key);
+
+        }else if(key == BACKSPACE || key == CTRL_KEY('h') || key == DELETE){
             if(buflen != 0) buflen--;
             buf[buflen] = '\0';
+            if(callback) callback(buf, key);
+
         }else if(key == CTRL_KEY('q')){
             free(buf);
             return NULL;
@@ -286,4 +292,15 @@ int xcurs2Rxcurs(editorRow *row, int xcurs){
         rxcurs++;
     }
     return rxcurs;
+}
+
+int Rxcurs2xcurs(editorRow *row, int rxcurs){
+    int xcurs = 0;
+    for(xcurs = 0; xcurs < rxcurs; xcurs++){
+        if(row->chars[xcurs] == '\t'){
+            rxcurs -= (EDITOR_TAB_STOP - 1) - (rxcurs % EDITOR_TAB_STOP);
+        }
+        xcurs++;
+    }
+    return xcurs;
 }

@@ -1,9 +1,10 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
-#endif
 
 #include <termios.h>
 #include <unistd.h>
+
+#endif
 
 void FlushTerminalAndSetCursorToLT();
 void Die(const char *s);

@@ -1,14 +1,25 @@
 #ifndef EDITOR_H
 #define EDITOR_H
-#endif
+
 
 #include <termios.h>
 #include <time.h>
+#include<ctype.h>
+#include<stdlib.h>
+#include<stdio.h>
+#include<unistd.h>
+#include<string.h>
+#include<stdarg.h>
+
 #include "appendbuffer.h"
 
 #define BBM_EDITOR_VERSION "0.0.1"
 #define EDITOR_TAB_STOP 4
 #define EIDTOR_CTRLQ_TIME 2
+
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+#endif
 
 enum editorKey{
     BACKSPACE = 127,
@@ -66,5 +77,6 @@ void PrintWelcome(appendBuffer *ab);
 void EditorDelChar();
 void RowDelChar(editorRow *row, int pos);
 int xcurs2Rxcurs(editorRow *row, int xcurs);
+int Rxcurs2xcurs(editorRow *row, int rxcurs);
 void editorInsertRow(int pos, char *s, size_t len);
-char *editorPrompt(char *prompt);
+char *editorPrompt(char *prompt, void (*callback) (const char *, int));

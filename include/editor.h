@@ -11,15 +11,13 @@
 #include<string.h>
 #include<stdarg.h>
 
-#include "appendbuffer.h"
-
 #define BBM_EDITOR_VERSION "0.0.1"
 #define EDITOR_TAB_STOP 4
 #define EIDTOR_CTRLQ_TIME 2
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
-#endif
+#define HL_HIGHLIGHT_NUMBERS (1<<0)
 
 enum editorKey{
     BACKSPACE = 127,
@@ -34,15 +32,38 @@ enum editorKey{
     DELETE
 };
 
+enum editorHighLight{
+    HL_NORMAL = 0,
+    HL_NUMBER,
+    HL_MATCH,
+};
+
 typedef struct editorRow{
     int size;
     char *chars;
     char *render;
     int rsize;
+    unsigned char *hl;
 }editorRow;
+
+typedef struct editorSyntax{
+    char **fileMatch;
+    char *fileExtension;
+    int flags;
+}editorSyntax;
+
+char *C_HL_extensions[] = {".c", ".cpp", ".h", NULL};
+editorSyntax HLDB[] = {
+    {   "c",
+        C_HL_extensions,
+        HL_HIGHLIGHT_NUMBERS
+    }
+};
+#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 struct editorConfig{
     struct termios originTermios;
+    struct editorSyntax *syntax;
     int WindowsRow;
     int WindowsCol;
     int xcursPosition;
@@ -59,8 +80,9 @@ struct editorConfig{
     char *fileExtension;
 };
 
-struct editorConfig E; //尚未被赋值的全局变量会被初始化为0
 
+struct appendBuffer;
+struct editorConfig E; //尚未被赋值的全局变量会被初始化为0
 
 void EditorInsertChar(int key);
 void RowInsertChar(editorRow *row, int pos, int c);
@@ -70,13 +92,15 @@ void InitEditor();
 void RefreshScreen();
 void editorSetStatusMessage(const char *fmt, ...);
 void editorScroll();
-void DrawRows(appendBuffer *ab);
-void DrawStatusBar(appendBuffer *ab);
-void DrawStatusMessageBar(appendBuffer *ab);
-void PrintWelcome(appendBuffer *ab);
+void DrawRows(struct appendBuffer *ab);
+void DrawStatusBar(struct appendBuffer *ab);
+void DrawStatusMessageBar(struct appendBuffer *ab);
+void PrintWelcome(struct appendBuffer *ab);
 void EditorDelChar();
 void RowDelChar(editorRow *row, int pos);
 int xcurs2Rxcurs(editorRow *row, int xcurs);
 int Rxcurs2xcurs(editorRow *row, int rxcurs);
 void editorInsertRow(int pos, char *s, size_t len);
 char *editorPrompt(char *prompt, void (*callback) (const char *, int));
+
+#endif

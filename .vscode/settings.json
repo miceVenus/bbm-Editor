@@ -21,6 +21,7 @@
         "appendbuffer.h": "c",
         "stdarg.h": "c",
         "array": "c",
-        "string_view": "c"
+        "string_view": "c",
+        "editor.h": "c"
     }
 }

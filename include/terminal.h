@@ -4,8 +4,6 @@
 #include <termios.h>
 #include <unistd.h>
 
-#endif
-
 void FlushTerminalAndSetCursorToLT();
 void Die(const char *s);
 void CheckedTcSetAttr(int fd, int optionalAction, struct termios *t);
@@ -15,3 +13,5 @@ void DisabelRawMode();
 void EnableRawMode();
 int GetWindowRowCol(int *row, int *col);
 int GetCursorPosition(int *row, int *col);
+
+#endif

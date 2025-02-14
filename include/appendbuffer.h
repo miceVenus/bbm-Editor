@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 
-#endif
 typedef struct appendBuffer{
     char *buffer;
     int len;
@@ -12,3 +11,5 @@ typedef struct appendBuffer{
 void ABufferSetup(appendBuffer *ab);
 void ABufferAppend(appendBuffer *ab, const char *s, int len);
 void ABufferFree(appendBuffer *ab);
+
+#endif

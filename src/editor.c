@@ -6,6 +6,8 @@
 #include "../include/terminal.h"
 #include "../include/input.h"
 #include "../include/file.h"
+#include "../include/syntaxHighlight.h"
+#include "../include/appendbuffer.h"
 
 void InitEditor(){
     E.dirty = 0;
@@ -20,6 +22,7 @@ void InitEditor(){
     E.rxcursPosition = 0;
     E.statusmsg[0] = '\0';
     E.statusmsg_time = 0;
+    E.syntax = NULL;
     if(GetWindowRowCol(&E.WindowsRow, &E.WindowsCol) == -1)
         Die("GetWindowSize");
     E.WindowsRow -= 2;
@@ -50,6 +53,7 @@ void RefreshScreen(){
 void DrawRows(struct appendBuffer *ab){
     for(int i = 0; i < E.WindowsRow; i++){
         int fileRow = i + E.rowoff;
+        editorRow *row = &E.row[fileRow];
         
         if(i == E.WindowsRow - 1 && E.numrows == 0) PrintWelcome(ab);
 
@@ -61,7 +65,20 @@ void DrawRows(struct appendBuffer *ab){
             int len = E.row[fileRow].rsize - E.coloff;
             if(len < 0) len = 0;
             if(len > E.WindowsCol) len = E.WindowsCol;
-            ABufferAppend(ab, &E.row[fileRow].render[E.coloff], len);
+            char *c = row->chars;
+            char escBuf[32];
+            for(int j = 0; j < len; j++){
+                if(row->hl[j] == HL_NORMAL){
+                    ABufferAppend(ab, "\x1b[39m", 5);
+                    ABufferAppend(ab, &c[j], 1);
+                }else{
+                    int hl = highlight2Color(row->hl[j]);
+                    int len = sprintf(escBuf, "\x1b[%dm", hl);
+                    ABufferAppend(ab, escBuf, len);
+                    ABufferAppend(ab, &c[j], 1);
+                }
+                ABufferAppend(ab, "\x1b[39m", 5);
+            }
         }
 
         ABufferAppend(ab, "\x1b[K", 3);
@@ -96,7 +113,6 @@ char *editorPrompt(char *prompt, void (*callback) (const char *, int)){
         editorSetStatusMessage(prompt, buf);
         RefreshScreen();
         int key = ReadKeypress();
-
         if(key == ARROW_DOWN || key == ARROW_RIGHT){
             if(callback) callback(buf, key);
         }
@@ -137,6 +153,7 @@ void editorAppendRow(char *s, size_t len){
 void editorFreeLine(editorRow *row){
     free(row->render);
     free(row->chars); 
+    free(row->hl);
 }
 
 void editorDelRow(int pos){
@@ -161,6 +178,7 @@ void editorInsertRow(int pos, char *s, size_t len){
     row->chars[len] = '\0';
     row->rsize = 0;
     row->render = NULL;
+    row->hl = NULL;
 
     eidtorUpdateRow(row);
     E.numrows++;
@@ -184,6 +202,7 @@ void eidtorUpdateRow(editorRow *row){
     }
     row->render[rsize] = '\0';
     row->rsize = rsize;
+    updateSyntaxHighlight(row);
 }
 
 void EditorInsertString(char *s, int pos, size_t len){

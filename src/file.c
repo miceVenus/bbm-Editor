@@ -34,7 +34,7 @@ void fileSave(){
     int len;
     char *buf = Erow2String(&len);
     char promptBuf[80];
-    snprintf(promptBuf, sizeof(promptBuf), "Saved as: %s", E.filename == NULL ? "" : E.filename);
+    snprintf(promptBuf, sizeof(promptBuf), "Saved as: %s%s", E.filename == NULL ? "" : E.filename, E.fileExtension);
     char *filename = editorPrompt(strcat(promptBuf, "%s (CTRL-Q to quit)"), NULL);
     if(filename == NULL){
         editorSetStatusMessage("Save aborted");
@@ -90,7 +90,7 @@ void fileOpen(char *filename){
 void InitEditorFileName(char *fileName){
     char *dot = strrchr(fileName, '.');
     if(!dot || dot == fileName) dot = NULL;
-    E.fileExtension  = strdup(dot == NULL ? ".txt" : dot);
+    E.fileExtension  = strdup(dot == NULL ? "\0" : dot);
     size_t fileNameLen = dot - fileName;
     E.filename = (char*)malloc(fileNameLen + 1);
     memmove(E.filename, fileName, fileNameLen);

@@ -6,6 +6,7 @@
 #include "../include/editorFind.h"
 #include "../include/file.h"
 #include "../include/editor.h"
+#include "../include/syntaxHighlight.h"
 
 void editorFind(){
     int savedXcurs = E.xcursPosition;
@@ -25,6 +26,13 @@ void editorFind(){
 void editorFindCallback(const char *queryString, int key){
     static int lastMatch = NO_LAST_MATCH;
     static int direction = FORWARD_SEARCH;
+    static int savedHighlightLine;
+    static unsigned char *savedHighlight = NULL;
+    if(savedHighlight){
+        editorRow *row = &E.row[savedHighlightLine];
+        memcpy(row->hl, savedHighlight, row->rsize);
+        free(savedHighlight);
+    }
 
     if(key == '\r' || key == '\x1b'){
         lastMatch = NO_LAST_MATCH;
@@ -54,10 +62,15 @@ void editorFindCallback(const char *queryString, int key){
 
         targetString = strstr(E.row[current].render, queryString);
         if(targetString != NULL){
+            editorRow *row = &E.row[current];
             lastMatch = current;
             E.ycursPosition = current;
-            E.xcursPosition = Rxcurs2xcurs(&E.row[current], targetString - E.row[current].render);
+            E.xcursPosition = Rxcurs2xcurs(row , targetString - row->render);
             E.rowoff = E.numrows;
+            savedHighlightLine = current;
+            savedHighlight = (unsigned char*)malloc(row->rsize);
+            memcpy(savedHighlight, row->hl, row->rsize);
+            highlightMatch(E.row[current].hl + E.xcursPosition, strlen(queryString));
             break;
         }
 

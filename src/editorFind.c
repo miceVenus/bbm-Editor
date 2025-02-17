@@ -14,7 +14,7 @@ void editorFind(){
     int savedRowoff = E.rowoff;
     int savedColoff = E.coloff;
 
-    char *queryString = editorPrompt("Search : %s (USE ARROW|ENTER|ESC|CTRL-Q)", editorFindCallback);
+    char *queryString = editorPrompt("Search : %s (USE ARROW|ENTER|ESC|CTRL-Q)", editorFindCallback, NULL);
     if(queryString) free(queryString);
     else{
         E.xcursPosition = savedXcurs;

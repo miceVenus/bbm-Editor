@@ -9,6 +9,15 @@
 #include "../include/syntaxHighlight.h"
 #include "../include/appendbuffer.h"
 
+char *C_HL_extensions[] = {".c", ".cpp", ".h", NULL};
+editorSyntax HLDB[] = {
+    {
+        "c", 
+        C_HL_extensions, 
+        HL_HIGHLIGHT_NUMBERS|HL_HIGHLIGHT_WORDS|HL_HIGHLIGHT_STRINGS,
+    },
+};
+
 void InitEditor(){
     E.dirty = 0;
     E.xcursPosition = 0;
@@ -65,9 +74,9 @@ void DrawRows(struct appendBuffer *ab){
             int len = E.row[fileRow].rsize - E.coloff;
             if(len < 0) len = 0;
             if(len > E.WindowsCol) len = E.WindowsCol;
-            char *c = row->chars;
+            char *c = row->render;
             char escBuf[32];
-            for(int j = 0; j < len; j++){
+            for(int j = E.coloff; j < E.coloff+len; j++){
                 if(row->hl[j] == HL_NORMAL){
                     ABufferAppend(ab, "\x1b[39m", 5);
                     ABufferAppend(ab, &c[j], 1);
@@ -104,11 +113,18 @@ void editorScroll(){
         E.coloff = E.rxcursPosition - E.WindowsCol + 1;
     }
 }
-char *editorPrompt(char *prompt, void (*callback) (const char *, int)){
+char *editorPrompt(char *prompt, void (*callback) (const char *, int), char *defaultBuf){
     size_t bufsize = 128;
     size_t buflen = 0;
-    char *buf = (char*)malloc(bufsize);
-    buf[buflen] = '\0';
+    char *buf;
+    if(defaultBuf){
+        buf = strdup(defaultBuf);
+        buflen = strlen(defaultBuf);
+    }
+    else{
+        buf = (char*)malloc(bufsize);
+        buf[buflen] = '\0';
+    }
     while(1){
         editorSetStatusMessage(prompt, buf);
         RefreshScreen();
@@ -257,8 +273,9 @@ void DrawStatusBar(struct appendBuffer *ab){
     ABufferAppend(ab, "\x1b[7m", 4);
     char status[80];
 
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines - %d current lines%s",
+    int len = snprintf(status, sizeof(status), "%.20s - %s - %d lines - %d current lines%s",
     E.filename ? E.filename : "[No Name]", 
+    E.syntax ? E.syntax->fileExtension : "[No FileType]",
     E.numrows, 
     E.ycursPosition,
     E.dirty ? " (modified)" : "");
@@ -322,4 +339,7 @@ int Rxcurs2xcurs(editorRow *row, int rxcurs){
         xcurs++;
     }
     return xcurs;
+}
+int getHLDBEntries(){
+    return sizeof(HLDB) / sizeof(HLDB[0]);
 }

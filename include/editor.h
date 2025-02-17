@@ -18,6 +18,18 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
+#define HL_HIGHLIGHT_WORDS (1<<1)
+#define HL_HIGHLIGHT_STRINGS (1<<2)
+
+
+typedef struct editorSyntax{
+    char *fileExtension;
+    char **fileMatch;
+    int flags;
+}editorSyntax;
+
+extern char *C_HL_extensions[];
+extern struct editorSyntax HLDB[];
 
 enum editorKey{
     BACKSPACE = 127,
@@ -36,6 +48,11 @@ enum editorHighLight{
     HL_NORMAL = 0,
     HL_NUMBER,
     HL_MATCH,
+    HL_STRING,
+    HL_WORD,
+    HL_COMMENT,
+    HL_KEYWORD1,
+    HL_KEYWORD2,
 };
 
 typedef struct editorRow{
@@ -45,21 +62,6 @@ typedef struct editorRow{
     int rsize;
     unsigned char *hl;
 }editorRow;
-
-typedef struct editorSyntax{
-    char **fileMatch;
-    char *fileExtension;
-    int flags;
-}editorSyntax;
-
-char *C_HL_extensions[] = {".c", ".cpp", ".h", NULL};
-editorSyntax HLDB[] = {
-    {   "c",
-        C_HL_extensions,
-        HL_HIGHLIGHT_NUMBERS
-    }
-};
-#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 struct editorConfig{
     struct termios originTermios;
@@ -101,6 +103,7 @@ void RowDelChar(editorRow *row, int pos);
 int xcurs2Rxcurs(editorRow *row, int xcurs);
 int Rxcurs2xcurs(editorRow *row, int rxcurs);
 void editorInsertRow(int pos, char *s, size_t len);
-char *editorPrompt(char *prompt, void (*callback) (const char *, int));
+char *editorPrompt(char *prompt, void (*callback) (const char *, int), char *defaultBuf);
+int getHLDBEntries();
 
 #endif

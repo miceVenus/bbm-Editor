@@ -20,11 +20,17 @@
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
 #define HL_HIGHLIGHT_WORDS (1<<1)
 #define HL_HIGHLIGHT_STRINGS (1<<2)
+#define HL_HIGHLIGHT_COMMENT (1<<3)
+#define HL_HIGHLIGHT_KEYWORD (1<<4)
 
 
 typedef struct editorSyntax{
     char *fileExtension;
     char **fileMatch;
+    char **fileKeywords;
+    char *singleLineCommentStart;
+    char *multiLineCommentStart;
+    char *multiLineCommentEnd;
     int flags;
 }editorSyntax;
 

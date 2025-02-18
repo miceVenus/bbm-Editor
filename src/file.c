@@ -77,7 +77,6 @@ void fileOpen(char *filename){
         char *line = NULL;
         size_t linecap = 0;
         ssize_t linelen = getline(&line, &linecap, fp);
-
         while(linelen != -1){
             while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
                 linelen--;
@@ -97,20 +96,25 @@ void InitFileNameAndSyntax(char *fileName){
 }
 
 void InitEditorFileName(char *fileName){
-    free(E.filename);
-    free(E.fileExtension);
+    if(E.filename) free(E.filename);
+    if(E.fileExtension) free(E.fileExtension);
     char *dot = strrchr(fileName, '.');
+    
     if(!dot || dot == fileName) dot = NULL;
-    E.fileExtension  = strdup(dot == NULL ? "\0" : dot);
-    size_t fileNameLen = dot - fileName;
-    E.filename = (char*)malloc(fileNameLen + 1);
-    memmove(E.filename, fileName, fileNameLen);
-    E.filename[fileNameLen] = '\0';
+    E.fileExtension  = strdup(dot == NULL ? "" : dot);
+
+    if(dot == NULL) E.filename = strdup(fileName);
+    else{
+        size_t fileNameLen = dot - fileName;
+        E.filename = (char*)malloc(fileNameLen + 1);
+        memmove(E.filename, fileName, fileNameLen);
+        E.filename[fileNameLen] = '\0';
+    }
 }
 
 void InitEditorSyntax(){
     if(E.syntax) free(E.syntax);
-    if(E.fileExtension == NULL) return;
+    if(E.fileExtension == NULL || !strcmp(E.fileExtension, "")) return;
     for(int i = 0; i < getHLDBEntries(); i++){
         editorSyntax *entry = &HLDB[i];
         int j = 0;

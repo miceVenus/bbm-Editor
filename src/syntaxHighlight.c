@@ -1,30 +1,74 @@
 #include "../include/syntaxHighlight.h"
 #include "../include/editor.h"
+int isKeywordPos(editorRow *row, int pos, int len);
 
 void updateSyntaxHighlight(editorRow *row){
+    // static unsigned char commentOpen = 0;
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
     if(E.syntax == NULL) return;
-
-    int preCharisSeperator = 1;
+    char **keywords = E.syntax->fileKeywords;
     int i = 0;
     while(i < row->rsize){
+        char postChar = (i < row->rsize - 1)? row->render[i+1] : '\0';
         unsigned char preCharHl = (i > 0)? row->hl[i - 1] : HL_NORMAL;
-        char c = row->render[i];
+        char curChar = row->render[i];
+        if(E.syntax->flags & HL_HIGHLIGHT_COMMENT){
+            if(curChar == '/' && postChar == '/'){
+                memset(row->hl + i, HL_COMMENT, row->rsize - i);
+                break;
+            }
+            //TODO: Make a better MultiLine comment highlighter
+            // if((curChar == '/' && postChar == '*') || commentOpen == 1){
+            //     commentOpen = 1;
+            //     while(commentOpen == 1 && i < row->rsize){
+            //         row->hl[i] = HL_COMMENT;
+            //         i++;
+            //         if(i < row->rsize - 1 && row->render[i] == '*' && row->render[i+1] == '/'){
+            //             commentOpen = 0;
+            //             row->hl[i] = HL_COMMENT;
+            //             row->hl[i+1] = HL_COMMENT;
+            //             i += 2;
+            //             break;
+            //         }
+            //     }
+            //     continue;
+            // }
+        }
+        if(E.syntax->flags & HL_HIGHLIGHT_KEYWORD){
+            int j = 0;
+            while(keywords[j] != NULL){
+                int keyword2 = 0;
+                char *keyword = keywords[j];
+                int keywordLen = strlen(keyword);
+                if(keyword[keywordLen - 1] == '|'){
+                    keywordLen--;
+                    keyword2 = 1;
+                }
+                if(!strncmp(&row->render[i], keyword, keywordLen) && isKeywordPos(row, i, keywordLen)){
+                    memset(row->hl + i, keyword2? HL_KEYWORD2 : HL_KEYWORD1, keywordLen);
+                    i += keywordLen;
+                    break;
+                }
+                j++;
+            }
+            if(keywords[j] != NULL) continue;
+        }
         if(E.syntax->flags & HL_HIGHLIGHT_NUMBERS){
-            if(isNumber(c, preCharHl, preCharisSeperator)){
+            int preCharisSeperator = 1;
+            if(isNumber(curChar, preCharHl, preCharisSeperator)){
                 row->hl[i] = HL_NUMBER;
                 i++;
                 preCharisSeperator = 0;
                 continue;
             }
-            preCharisSeperator = isSeperator(c);
+            preCharisSeperator = isSeperator(curChar);
         }
         if(E.syntax->flags & HL_HIGHLIGHT_STRINGS){
-            if(c == '"'){
+            if(curChar == '\'' || curChar == '"'){
                 row->hl[i] = HL_STRING;
                 int j = i+1;
-                while(j<row->rsize && row->render[j] != '"'){
+                while(j<row->rsize && row->render[j] != curChar){
                     row->hl[j] = HL_STRING;
                     j++;
                 }
@@ -34,16 +78,16 @@ void updateSyntaxHighlight(editorRow *row){
             }
         }
         if(E.syntax->flags & HL_HIGHLIGHT_WORDS){
-            if(isSeperator(c)){
+            if(isSeperator(curChar)){
                 i++;
                 continue;
             }
-            if(isspace(c)){
+            if(isspace(curChar)){
                 i++;
                 continue;
             }
 
-            if(isprint(c)){
+            if(isprint(curChar)){
                 row->hl[i] = HL_WORD;
                 i++;
                 continue;
@@ -64,23 +108,35 @@ int highlight2Color(int hl){
         return 39;
 
     case HL_MATCH:
-        return 34;
+        return 37;
     
     case HL_WORD:
-        return 36;
+        return 96;
 
     case HL_STRING:
         return 33;
+    
+    case HL_COMMENT:
+        return 32;
+    
+    case HL_KEYWORD1:
+        return 94;
+    
+    case HL_KEYWORD2:
+        return 95;
 
     default:
-        return 37;
+        return 39;
     }
 
 }
 void highlightMatch(unsigned char *pos, int matchLen){
     memset(pos, HL_MATCH, matchLen);
 }
-
+int isKeywordPos(editorRow *row, int pos, int len){
+    if(pos + len >= row->rsize) return 0;
+    return (pos == 0? 1 : isSeperator(row->render[pos - 1])) && isSeperator(row->render[pos + len]);
+}
 int isSeperator(char c){
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }

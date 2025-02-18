@@ -10,11 +10,24 @@
 #include "../include/appendbuffer.h"
 
 char *C_HL_extensions[] = {".c", ".cpp", ".h", NULL};
+char *C_HL_keywords[] = {
+    "switch", "if", "while", "for", "break", "continue", "return", "else",
+    "struct", "union", "typedef", "static", "enum", "class", "case",
+    
+    "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
+    "#define|", "#include|", "#if|", "#else|", "#endif|", "#ifdef|", "#ifndef|",
+    "NULL|","void|", NULL
+};
 editorSyntax HLDB[] = {
     {
         "c", 
         C_HL_extensions, 
-        HL_HIGHLIGHT_NUMBERS|HL_HIGHLIGHT_WORDS|HL_HIGHLIGHT_STRINGS,
+        C_HL_keywords,
+        "//",
+        "/*",
+        "*/",
+        HL_HIGHLIGHT_NUMBERS|HL_HIGHLIGHT_WORDS|HL_HIGHLIGHT_STRINGS|
+        HL_HIGHLIGHT_COMMENT|HL_HIGHLIGHT_KEYWORD,
     },
 };
 
@@ -77,7 +90,12 @@ void DrawRows(struct appendBuffer *ab){
             char *c = row->render;
             char escBuf[32];
             for(int j = E.coloff; j < E.coloff+len; j++){
-                if(row->hl[j] == HL_NORMAL){
+                if(iscntrl(c[j])){
+                    char sym = (c[j] <= 26) ? '@' : '?';
+                    ABufferAppend(ab, "\x1b[7m", 4);
+                    ABufferAppend(ab, &sym, 1);
+                    ABufferAppend(ab, "\x1b[m", 3);
+                }else if(row->hl[j] == HL_NORMAL){
                     ABufferAppend(ab, "\x1b[39m", 5);
                     ABufferAppend(ab, &c[j], 1);
                 }else{
@@ -94,7 +112,6 @@ void DrawRows(struct appendBuffer *ab){
         ABufferAppend(ab, "\r\n", 2);
     }
 }
-
 void editorScroll(){
     E.rxcursPosition = 0;
     if(E.ycursPosition < E.numrows){
@@ -253,6 +270,7 @@ void EditorDelChar(){
 
 void RowInsertChar(editorRow *row, int pos, int c){
     if(pos < 0 || pos > row->size) pos = row->size;
+    if((iscntrl(c)&& c != '\n' && c != '\t') || c == 127) return;
     row->chars = realloc(row->chars, row->size + 2);
     row->size++;
     memmove(&row->chars[pos + 1], &row->chars[pos], row->size - pos);

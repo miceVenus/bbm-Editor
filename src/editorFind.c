@@ -32,8 +32,8 @@ void editorFindCallback(const char *queryString, int key){
         editorRow *row = &E.row[savedHighlightLine];
         memcpy(row->hl, savedHighlight, row->rsize);
         free(savedHighlight);
+        savedHighlight = NULL;
     }
-
     if(key == '\r' || key == '\x1b'){
         lastMatch = NO_LAST_MATCH;
         direction = FORWARD_SEARCH;
@@ -70,7 +70,7 @@ void editorFindCallback(const char *queryString, int key){
             savedHighlightLine = current;
             savedHighlight = (unsigned char*)malloc(row->rsize);
             memcpy(savedHighlight, row->hl, row->rsize);
-            highlightMatch(E.row[current].hl + E.xcursPosition, strlen(queryString));
+            highlightMatch(E.row[current].hl + E.rxcursPosition, strlen(queryString));
             break;
         }
 

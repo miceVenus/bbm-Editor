@@ -57,7 +57,6 @@ void fileSave(){
         }
         editorSetStatusMessage("%d Bytes has been saved",len);
         InitFileNameAndSyntax(filename);
-
         fclose(fp);
         free(buf);
         free(filename);
@@ -96,8 +95,14 @@ void InitFileNameAndSyntax(char *fileName){
 }
 
 void InitEditorFileName(char *fileName){
-    if(E.filename) free(E.filename);
-    if(E.fileExtension) free(E.fileExtension);
+    if(E.filename){
+        free(E.filename);
+        E.filename = NULL;
+    }
+    if(E.fileExtension){
+        free(E.fileExtension);
+        E.fileExtension = NULL;
+    }
     char *dot = strrchr(fileName, '.');
     
     if(!dot || dot == fileName) dot = NULL;
@@ -113,7 +118,6 @@ void InitEditorFileName(char *fileName){
 }
 
 void InitEditorSyntax(){
-    if(E.syntax) free(E.syntax);
     if(E.fileExtension == NULL || !strcmp(E.fileExtension, "")) return;
     for(int i = 0; i < getHLDBEntries(); i++){
         editorSyntax *entry = &HLDB[i];

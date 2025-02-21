@@ -29,6 +29,16 @@ editorSyntax HLDB[] = {
         HL_HIGHLIGHT_NUMBERS|HL_HIGHLIGHT_WORDS|HL_HIGHLIGHT_STRINGS|
         HL_HIGHLIGHT_COMMENT|HL_HIGHLIGHT_KEYWORD,
     },
+    {
+        "python", 
+        C_HL_extensions, 
+        C_HL_keywords,
+        "//",
+        "/*",
+        "*/",
+        HL_HIGHLIGHT_NUMBERS|HL_HIGHLIGHT_WORDS|HL_HIGHLIGHT_STRINGS|
+        HL_HIGHLIGHT_COMMENT|HL_HIGHLIGHT_KEYWORD,
+    },
 };
 
 void InitEditor(){
@@ -189,12 +199,18 @@ void editorFreeLine(editorRow *row){
     free(row->hl);
 }
 
+void RowUpdateIndex(){
+    for(int i = 0; i < E.numrows; i++){
+        E.row[i].index = i;
+    }
+}
 void editorDelRow(int pos){
     if(pos < 0 || pos >= E.numrows) return;
     editorFreeLine(&E.row[pos]);
     memmove(&E.row[pos], &E.row[pos + 1], sizeof(editorRow) * (E.numrows - pos - 1));
     E.numrows--;
     E.dirty++;
+    RowUpdateIndex();
 }
 
 void editorInsertRow(int pos, char *s, size_t len){
@@ -212,10 +228,12 @@ void editorInsertRow(int pos, char *s, size_t len){
     row->rsize = 0;
     row->render = NULL;
     row->hl = NULL;
-
+    row->isChanged = 0;
+    row->isInComment = 0;
     eidtorUpdateRow(row);
     E.numrows++;
     E.dirty++;
+    RowUpdateIndex();
 }
 
 void eidtorUpdateRow(editorRow *row){
@@ -361,3 +379,54 @@ int Rxcurs2xcurs(editorRow *row, int rxcurs){
 int getHLDBEntries(){
     return sizeof(HLDB) / sizeof(HLDB[0]);
 }
+// void SetInCommentTag(editorRow *row){
+//     if(E.syntax == NULL) return;
+//     int isChanged = 0;
+//     int preindex = row->index <= 0 ? 0 : row->index - 1;
+//     char *commentStart;
+//     char *commentEnd;
+//     if(row->render){
+//         commentStart = strstr(row->render, E.syntax->multiLineCommentStart);
+//         commentEnd = strstr(row->render, E.syntax->multiLineCommentEnd);
+//     }else{
+//         commentStart = NULL;
+//         commentEnd = NULL;
+//     }
+//     if((commentStart && !commentEnd) || (E.row[preindex].isInComment == 1 && !commentEnd)){
+//         int i = row->index;
+//         while(i < E.numrows && !strstr(E.row[i].render, E.syntax->multiLineCommentEnd)){
+//             E.row[i].isInComment = 1;
+//             i++;
+//         }
+//         E.row[i].isInComment = 1;
+//         isChanged = 1;
+//     }
+//     if((commentEnd && !commentStart) || (E.row[preindex].isInComment == 0 && !commentStart)){
+//         int i = row->index;
+//         while(i <E.numrows && !strstr(E.row[i].render, E.syntax->multiLineCommentStart)){
+//             E.row[i].isInComment = 0;
+//             i++;
+//         }
+//         isChanged = 1;
+//     }
+//     if(commentEnd && commentStart){
+//         row->isInComment = 1;
+//         int i = row->index + 1;
+//         while(i < E.numrows && !strstr(E.row[i].render, E.syntax->multiLineCommentStart)){
+//             E.row[i].isInComment = 0;
+//             i++;
+//         }
+//         isChanged = 1;
+//     }
+//     if(isChanged){
+//         UpdateAllRowsHighlightFrom(row->index);
+//     }
+// }
+// void UpdateAllRowsHighlightFrom(int begin){
+//     int i = begin;
+//     while(i < E.numrows){
+//         editorRow *row = &E.row[i];
+//         updateSyntaxHighlight(row);
+//         i++;
+//     }
+// }

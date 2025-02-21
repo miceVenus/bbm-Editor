@@ -1,7 +1,17 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+/*nihao
+dsadsa
+dsa
+dads
+ad
+ads
+a
 
+
+
+*/
 #include <termios.h>
 #include <time.h>
 #include<ctype.h>
@@ -67,6 +77,9 @@ typedef struct editorRow{
     char *render;
     int rsize;
     unsigned char *hl;
+    int isInComment;
+    int index;
+    int isChanged;
 }editorRow;
 
 struct editorConfig{
@@ -111,5 +124,6 @@ int Rxcurs2xcurs(editorRow *row, int rxcurs);
 void editorInsertRow(int pos, char *s, size_t len);
 char *editorPrompt(char *prompt, void (*callback) (const char *, int), char *defaultBuf);
 int getHLDBEntries();
-
+void SetInCommentTag(editorRow *row);
+void UpdateAllRowsHighlightFrom(int begin);
 #endif

@@ -3,37 +3,49 @@
 int isKeywordPos(editorRow *row, int pos, int len);
 
 void updateSyntaxHighlight(editorRow *row){
-    // static unsigned char commentOpen = 0;
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
     if(E.syntax == NULL) return;
     char **keywords = E.syntax->fileKeywords;
+    char *scs = E.syntax->singleLineCommentStart;
+    char *mcs = E.syntax->multiLineCommentStart;
+    char *mce = E.syntax->multiLineCommentEnd;
+
+    int mcs_len = mcs ? strlen(mcs) : 0;
+    int mce_len = mce ? strlen(mce) : 0;
+
     int i = 0;
+    int inComment = row->index > 0 && E.row[row->index - 1].isInComment;
     while(i < row->rsize){
-        char postChar = (i < row->rsize - 1)? row->render[i+1] : '\0';
+        // char postChar = (i < row->rsize - 1)? row->render[i+1] : '\0';
         unsigned char preCharHl = (i > 0)? row->hl[i - 1] : HL_NORMAL;
         char curChar = row->render[i];
         if(E.syntax->flags & HL_HIGHLIGHT_COMMENT){
-            if(curChar == '/' && postChar == '/'){
-                memset(row->hl + i, HL_COMMENT, row->rsize - i);
-                break;
+            char *slCommentStartNeedle = strstr(row->render, scs);
+            if(slCommentStartNeedle != NULL){
+                int slCommentStartPos = slCommentStartNeedle - row->render;
+                memset(row->hl + slCommentStartPos, HL_COMMENT, row->rsize - slCommentStartPos);
+                i += row->rsize - slCommentStartPos;
+                continue;
             }
-            //TODO: Make a better MultiLine comment highlighter
-            // if((curChar == '/' && postChar == '*') || commentOpen == 1){
-            //     commentOpen = 1;
-            //     while(commentOpen == 1 && i < row->rsize){
-            //         row->hl[i] = HL_COMMENT;
-            //         i++;
-            //         if(i < row->rsize - 1 && row->render[i] == '*' && row->render[i+1] == '/'){
-            //             commentOpen = 0;
-            //             row->hl[i] = HL_COMMENT;
-            //             row->hl[i+1] = HL_COMMENT;
-            //             i += 2;
-            //             break;
-            //         }
-            //     }
-            //     continue;
-            // }
+
+            if(inComment) {
+                row->hl[i] = HL_COMMENT;
+                if (!strncmp(&row->render[i], mce, mce_len)) {
+                    memset(&row->hl[i], HL_COMMENT, mce_len);
+                    i += mce_len;
+                    inComment = 0;
+                    continue;
+                }else {
+                    i++;
+                    continue;
+                }
+            }else if(!strncmp(&row->render[i], mcs, mcs_len)) {
+                memset(&row->hl[i], HL_COMMENT, mcs_len);
+                i += mcs_len;
+                inComment = 1;
+                continue;
+            }
         }
         if(E.syntax->flags & HL_HIGHLIGHT_KEYWORD){
             int j = 0;
@@ -95,6 +107,10 @@ void updateSyntaxHighlight(editorRow *row){
         }
         i++;
     }
+    int changed = (row->isInComment != inComment);
+    row->isInComment = inComment;
+    if (changed && row->index + 1 < E.numrows)
+      updateSyntaxHighlight(&E.row[row->index + 1]);
 }
 
 int highlight2Color(int hl){
